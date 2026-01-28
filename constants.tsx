@@ -224,24 +224,24 @@ export const QUESTIONS_STAGE_4: QuizQuestion[] = [
 
 export const TESTIMONIALS = [
   {
-    name: 'Ana Paula',
-    age: 38,
+    name: '',
+    age: 0,
     result: '-12kg em 90 dias',
-    text: 'Tentei 15 dietas diferentes. Nenhuma funcionou até entender que precisava de constância.',
+    text: '',
     image: 'https://ik.imagekit.io/ekdmcxqtr/prova_social_padronizada_3.jpg'
   },
   {
-    name: 'Beatriz',
-    age: 45,
+    name: '',
+    age: 0,
     result: '-9kg + Paz mental',
-    text: 'Finalmente entendi meus gatilhos emocionais. Perder peso foi uma consequência natural.',
+    text: '',
     image: 'https://ik.imagekit.io/ekdmcxqtr/prova_social_padronizada_5.jpg'
   },
   {
-    name: 'Juliana',
-    age: 34,
+    name: '',
+    age: 0,
     result: '-7kg em 30 dias',
-    text: 'Prático e eficiente para quem não tem tempo. As receitas são deliciosas e o suporte é nota 10.',
+    text: '',
     image: 'https://ik.imagekit.io/ekdmcxqtr/prova_social_padronizada_1.jpg'
   }
 ];

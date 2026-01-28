@@ -215,11 +215,13 @@ const TestimonialsStep: React.FC<{ onNext: () => void }> = ({ onNext }) => {
         <div className="w-full relative overflow-hidden rounded-[2.5rem] shadow-2xl border-4 border-gray-50 bg-gray-50 aspect-[4/5]">
           {TESTIMONIALS.map((t, i) => (
             <div key={i} className={`absolute inset-0 transition-opacity duration-1000 flex flex-col ${i === activeIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
-              <img src={t.image} alt={t.name} className="w-full flex-1 object-cover" />
-              <div className="p-8 bg-white border-t">
-                <h4 className="font-black text-lg" style={{ color: COLORS.PURPLE }}>{t.name}, {t.age} anos</h4>
-                <p className="text-gray-600 italic">"{t.text}"</p>
-              </div>
+              <img src={t.image} alt={t.name || 'Testimonial'} className="w-full flex-1 object-cover" />
+              {(t.name || t.text) && (
+                <div className="p-8 bg-white border-t">
+                  {t.name && <h4 className="font-black text-lg" style={{ color: COLORS.PURPLE }}>{t.name}{t.age > 0 ? `, ${t.age} anos` : ''}</h4>}
+                  {t.text && <p className="text-gray-600 italic">"{t.text}"</p>}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -467,6 +469,7 @@ const App: React.FC = () => {
     seq.push({ type: StepType.CAROUSEL_BEFORE_AFTER });
     QUESTIONS_STAGE_2.forEach(q => seq.push({ type: StepType.QUESTION, question: q }));
     seq.push({ type: StepType.DIAGNOSIS_2 });
+    // Fix: Removed incorrect reference to StepType.QUESTIONS_STAGE_3 which was causing a TypeScript error
     QUESTIONS_STAGE_3.forEach(q => seq.push({ type: StepType.QUESTION, question: q }));
     seq.push({ type: StepType.TESTIMONIALS });
     seq.push({ type: StepType.DIAGNOSIS_3 });
