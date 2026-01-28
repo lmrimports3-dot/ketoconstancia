@@ -454,60 +454,136 @@ const VSLPlayer: React.FC = () => {
 };
 
 const FinalOfferStep: React.FC<{ answers: Record<string, string> }> = ({ answers }) => {
-  const pesoAtual = parseInt(answers['peso_atual'] || '75');
-  const pesoMeta = parseInt(answers['peso_meta'] || '60');
-  const perda = Math.max(0, pesoAtual - pesoMeta);
+  const [contentVisible, setContentVisible] = useState(false);
+  
+  const isPreview = useMemo(() => {
+    return window.location.hostname.includes("googleusercontent") ||
+           window.location.hostname.includes("aistudio") ||
+           window.location.hostname === "localhost";
+  }, []);
+
+  // Lógica obrigatória de desbloqueio
+  useEffect(() => {
+    const handleVslMessage = (event: MessageEvent) => {
+      if (event.data === "VSL_FINISHED") {
+        setContentVisible(true);
+      }
+    };
+    window.addEventListener("message", handleVslMessage);
+    
+    // Fallback para preview: permitir ver o conteúdo após alguns segundos ou via clique
+    if (isPreview) {
+      const timer = setTimeout(() => setContentVisible(true), 5000);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener("message", handleVslMessage);
+      };
+    }
+
+    return () => window.removeEventListener("message", handleVslMessage);
+  }, [isPreview]);
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] pt-4 pb-20 px-4">
-      <div className="max-w-4xl mx-auto space-y-6 fade-in">
-        <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100">
-          <div className="p-8 text-center text-white space-y-2" style={{ background: `linear-gradient(135deg, ${COLORS.PURPLE}, #4A2B7A)` }}>
-            <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter">Diagnóstico Finalizado</h2>
-            <p className="text-lg opacity-90 font-medium">Assista ao vídeo abaixo para desbloquear seu plano</p>
+    <div className="min-h-screen bg-white">
+      {/* VSL SEMPRE NO TOPO - ÚNICA COISA VISÍVEL INICIALMENTE */}
+      <div className="bg-[#F5F5F5] py-10 px-4">
+        <div className="max-w-4xl mx-auto text-center mb-8">
+           <h2 className="text-2xl md:text-3xl font-black mb-2" style={{ color: COLORS.PURPLE }}>Seu Diagnóstico está Pronto!</h2>
+           <p className="text-gray-600 font-medium italic">Assista ao vídeo abaixo para desbloquear seu plano completo</p>
+        </div>
+        <VSLPlayer />
+      </div>
+
+      {/* PÁGINA DE VENDAS BLOQUEADA (DESBLOQUEIA APÓS VSL) */}
+      {contentVisible && (
+        <div id="sales-page" className="fade-in">
+          {/* Headline Principal */}
+          <div className="max-w-4xl mx-auto px-6 py-16 text-center space-y-6">
+            <h1 className="text-4xl md:text-6xl font-black leading-tight tracking-tighter" style={{ color: COLORS.PURPLE }}>
+              Você não precisa tentar mais nada.<br/>
+              <span style={{ color: COLORS.MAGENTA }}>Você só precisa seguir o plano certo.</span>
+            </h1>
+            <p className="text-xl md:text-2xl text-gray-600 font-medium max-w-3xl mx-auto leading-relaxed">
+              O Método Constância Keto™ mostra exatamente o que comer, como ajustar e como manter o resultado sem efeito sanfona, sem dietas malucas e sem sofrimento.
+            </p>
           </div>
-          
-          <div className="p-6 md:p-10 flex flex-col items-center">
-            {/* VSL NO TOPO */}
-            <VSLPlayer />
 
-            {/* CTA PRIMÁRIA - LOGO ABAIXO DA VSL (PRIMEIRA DOBRA) */}
-            <div className="w-full max-w-lg mb-10 text-center">
+          {/* Bloco de Benefícios */}
+          <div className="bg-[#F9F9F9] py-16 px-6">
+            <div className="max-w-xl mx-auto space-y-6">
+              <h3 className="text-2xl font-black text-center mb-10" style={{ color: COLORS.PURPLE }}>Com acesso imediato, você vai:</h3>
+              <ul className="space-y-4">
+                {[
+                  "Descobrir por que seu emagrecimento travou",
+                  "Corrigir erros invisíveis que te fazem engordar",
+                  "Emagrecer com constância, mesmo sem tempo",
+                  "Seguir um plano simples e possível",
+                  "Parar de recomeçar toda segunda-feira"
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-4 p-5 bg-white rounded-2xl shadow-sm border border-gray-100">
+                    <span className="text-2xl text-green-500">✔</span>
+                    <span className="text-lg font-bold text-gray-700">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Autoridade Emocional */}
+          <div className="max-w-4xl mx-auto px-6 py-20 text-center space-y-8">
+            <div className="w-20 h-1 bg-magenta-500 mx-auto" style={{ backgroundColor: COLORS.MAGENTA }}></div>
+            <h2 className="text-3xl md:text-4xl font-black leading-tight" style={{ color: COLORS.PURPLE }}>
+              Este método não é uma dieta da moda e não depende de força de vontade infinita.
+            </h2>
+            <p className="text-xl md:text-2xl text-gray-500 font-medium">
+              Ele funciona porque se adapta ao seu corpo, ao seu ritmo e à sua realidade.
+            </p>
+          </div>
+
+          {/* Oferta Irresistível */}
+          <div className="max-w-2xl mx-auto px-6 pb-32">
+            <div className="bg-white rounded-[3rem] shadow-2xl border-4 p-10 text-center relative overflow-hidden" style={{ borderColor: COLORS.PURPLE }}>
+              <div className="absolute top-0 right-0 p-4 bg-yellow-400 font-black text-xs uppercase tracking-widest rotate-12 translate-x-4 -translate-y-2">Oferta Única</div>
+              
+              <h3 className="text-2xl font-black mb-8" style={{ color: COLORS.PURPLE }}>Acesso Vitalício ao Método Constância Keto™</h3>
+              
+              <div className="space-y-3 mb-10 text-left max-w-xs mx-auto">
+                {["Compra única", "Sem mensalidade", "Sem renovação", "Acesso imediato"].map((tag, i) => (
+                  <div key={i} className="flex items-center gap-2 font-bold text-gray-400 uppercase text-xs">
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS.MAGENTA }}></span>
+                    {tag}
+                  </div>
+                ))}
+              </div>
+
+              <div className="mb-8">
+                <p className="text-gray-400 line-through text-xl font-bold">De R$ 197,00</p>
+                <div className="flex justify-center items-baseline gap-2">
+                  <span className="text-2xl font-black text-gray-900">Hoje por</span>
+                  <span className="text-6xl md:text-7xl font-black" style={{ color: COLORS.MAGENTA }}>R$ 27,90</span>
+                </div>
+                <p className="mt-4 text-gray-500 font-bold italic">
+                  Menos do que você gasta em um lanche que atrasa seu resultado.
+                </p>
+              </div>
+
               <button 
-                className="w-full py-6 bg-[#25D366] text-white font-black rounded-3xl text-xl md:text-2xl shadow-xl hover:bg-green-600 transition transform hover:scale-105 active:scale-95 animate-pulse flex items-center justify-center gap-3"
                 onClick={() => window.open('https://pay.kiwify.com.br/hC6S0pP', '_blank')}
+                className="w-full py-7 bg-green-500 text-white font-black rounded-3xl text-xl md:text-2xl shadow-xl hover:bg-green-600 transition transform hover:scale-105 active:scale-95 animate-pulse uppercase"
               >
-                QUERO MEU PLANO AGORA!
+                SIM, QUERO EMAGRECER COM CONSTÂNCIA
               </button>
-              <div className="mt-4 flex items-baseline justify-center space-x-2">
-                <span className="text-gray-400 line-through text-lg">R$ 297,00</span>
-                <span className="text-3xl font-black" style={{ color: COLORS.MAGENTA }}>R$ 97,00</span>
-              </div>
-            </div>
 
-            {/* SEÇÃO DE RESULTADOS */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mb-10">
-              <div className="bg-purple-50 p-6 rounded-3xl border border-purple-100 text-center">
-                <p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest mb-1">Seu Objetivo</p>
-                <p className="text-4xl font-black" style={{ color: COLORS.PURPLE }}>-{perda}kg</p>
-                <p className="mt-1 text-sm text-gray-600 font-medium">Peso total a eliminar</p>
+              <div className="mt-8 flex flex-wrap justify-center gap-6 opacity-60">
+                <div className="flex flex-col items-center"><span className="text-2xl">🔒</span><span className="text-[10px] font-bold">Compra Segura</span></div>
+                <div className="flex flex-col items-center"><span className="text-2xl">⚡</span><span className="text-[10px] font-bold">Acesso Imediato</span></div>
+                <div className="flex flex-col items-center"><span className="text-2xl">📱</span><span className="text-[10px] font-bold">Mobile Friendly</span></div>
+                <div className="flex flex-col items-center"><span className="text-2xl">📩</span><span className="text-[10px] font-bold">Suporte VIP</span></div>
               </div>
-              <div className="bg-magenta-50 p-6 rounded-3xl border border-pink-100 text-center">
-                <p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest mb-1">Fase de Choque</p>
-                <p className="text-4xl font-black" style={{ color: COLORS.MAGENTA }}>14 Dias</p>
-                <p className="mt-1 text-sm text-gray-600 font-medium">Ativação da Cetose</p>
-              </div>
-            </div>
-
-            {/* SELOS DE SEGURANÇA */}
-            <div className="flex flex-wrap justify-center gap-6 opacity-60 grayscale scale-90">
-                <div className="flex flex-col items-center"><span className="text-2xl">🛡️</span><span className="text-[10px] font-bold">Compra Segura</span></div>
-                <div className="flex flex-col items-center"><span className="text-2xl">✅</span><span className="text-[10px] font-bold">Acesso Vitalício</span></div>
-                <div className="flex flex-col items-center"><span className="text-2xl">🏅</span><span className="text-[10px] font-bold">7 Dias de Garantia</span></div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
