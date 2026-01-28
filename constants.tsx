@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { QuizQuestion } from './types';
+import { QuizQuestion } from './types.ts';
 
 export const COLORS = {
   PURPLE: '#2D1B4E',
@@ -19,10 +19,34 @@ export const QUESTIONS_STAGE_1: QuizQuestion[] = [
     layout: 'grid',
     columns: 2,
     options: [
-      { id: '25-35', label: '25-35 anos', description: 'Jovem Adulta', icon: '🎀', imageUrl: 'https://picsum.photos/200/200?random=1' },
-      { id: '36-45', label: '36-45 anos', description: 'Mulher Forte', icon: '💪', imageUrl: 'https://picsum.photos/200/200?random=2' },
-      { id: '46-55', label: '46-55 anos', description: 'Mulher Elegante', icon: '✨', imageUrl: 'https://picsum.photos/200/200?random=3' },
-      { id: '55+', label: '55+ anos', description: 'Mulher Empoderada', icon: '👑', imageUrl: 'https://picsum.photos/200/200?random=4' },
+      { 
+        id: '25-35', 
+        label: '25-35 anos', 
+        description: 'Jovem Adulta', 
+        icon: '🎀', 
+        imageUrl: 'https://ik.imagekit.io/ekdmcxqtr/Image_fx.png' 
+      },
+      { 
+        id: '36-45', 
+        label: '36-45 anos', 
+        description: 'Mulher Forte', 
+        icon: '💪', 
+        imageUrl: 'https://ik.imagekit.io/ekdmcxqtr/Image_fx%20(1).png' 
+      },
+      { 
+        id: '46-55', 
+        label: '46-55 anos', 
+        description: 'Mulher Elegante', 
+        icon: '✨', 
+        imageUrl: 'https://ik.imagekit.io/ekdmcxqtr/Image_fx%20(2).png' 
+      },
+      { 
+        id: '55+', 
+        label: '55+ anos', 
+        description: 'Mulher Empoderada', 
+        icon: '👑', 
+        imageUrl: 'https://ik.imagekit.io/ekdmcxqtr/Image_fx%20(3).png' 
+      },
     ]
   },
   {
