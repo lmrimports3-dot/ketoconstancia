@@ -156,7 +156,7 @@ const SalesPage: React.FC = () => {
           
           <div className="mb-10">
             <p className="text-amber-400 font-black uppercase tracking-widest text-sm mb-2">Hoje você paga apenas:</p>
-            <span className="text-7xl md:text-9xl font-black tracking-tighter" style={{ color: COLORS.MAGENTA }}>R$ 27,90</span>
+            <span className="text-7xl md:text-9xl font-black tracking-tighter" style={{ color: COLORS.MAGENTA }}>R$ 14,90</span>
           </div>
 
           <p className="text-gray-400 font-medium mb-12">
@@ -222,7 +222,7 @@ const SalesPage: React.FC = () => {
           <span className="text-6xl block mb-6">🛡️</span>
           <h4 className="text-2xl font-black mb-6" style={{ color: COLORS.PURPLE }}>Garantia incondicional de 7 dias</h4>
           <p className="text-gray-500 font-medium leading-relaxed mb-12">
-            Se você não sentir que esse método é mais simples e possível do que tudo que já tentou, seu dinheiro é devolvido. Sem perguntas. Sem burocracia.
+            Se você não sentir que esse método é mais simples e possível do que tudo que já tentou, seu dinheiro é devolvido. Sem perguntas. Sem burrocracia.
           </p>
           
           <button 
@@ -242,7 +242,9 @@ const SalesPage: React.FC = () => {
   );
 };
 
-// --- COMPONENTES DO QUIZ ---
+// --- COMPONENTE PRINCIPAL ---
+// (Componentes do Quiz omitidos para brevidade, mas devem permanecer os mesmos)
+// (Nota: No arquivo real eles devem estar presentes conforme a estrutura anterior)
 
 const ProgressBar: React.FC<{ progress: number }> = ({ progress }) => (
   <div className="fixed top-0 left-0 w-full h-3 bg-gray-200 z-50 shadow-sm">
@@ -459,8 +461,6 @@ const LoadingStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
     </div>
   );
 };
-
-// --- COMPONENTE PRINCIPAL ---
 
 const App: React.FC = () => {
   const [showSalesPage, setShowSalesPage] = useState(false);
