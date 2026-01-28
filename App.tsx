@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { StepType, QuizState, QuizQuestion } from './types';
+import { StepType, QuizState, QuizQuestion } from './types.ts';
 import { 
   COLORS, 
   QUESTIONS_STAGE_1, 
@@ -9,7 +9,7 @@ import {
   QUESTIONS_STAGE_4,
   TESTIMONIALS, 
   TRANSFORMATIONS 
-} from './constants';
+} from './constants.tsx';
 
 // --- COMPONENTES ATÔMICOS ---
 
@@ -471,7 +471,7 @@ const FinalOfferStep: React.FC<{ answers: Record<string, string> }> = ({ answers
     };
     window.addEventListener("message", handleVslMessage);
     
-    // Fallback para preview: permitir ver o conteúdo após alguns segundos ou via clique
+    // Fallback para preview: permitir ver o conteúdo após alguns segundos para testes
     if (isPreview) {
       const timer = setTimeout(() => setContentVisible(true), 5000);
       return () => {
