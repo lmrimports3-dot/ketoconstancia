@@ -276,9 +276,6 @@ const VSLPlayer: React.FC = () => {
     s.src = "https://scripts.converteai.net/d8154a78-90e0-4096-8a57-1af2803d66bb/players/69737ebe325672f377a0cc0b/v4/player.js";
     s.async = true;
     document.head.appendChild(s);
-    return () => {
-      // Cleanup do script se necessário
-    };
   }, []);
 
   return (
@@ -291,61 +288,69 @@ const VSLPlayer: React.FC = () => {
   );
 };
 
-// --- SALES PAGE FINAL COM DESBLOQUEIO REAL ---
+// --- SALES PAGE FINAL COM DESBLOQUEIO REAL E À PROVA DE BUG 99% ---
 
 const FinalOfferStep: React.FC = () => {
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const unlockedRef = useRef(false);
   
   useEffect(() => {
-    console.log("[DEBUG] Listener de eventos do vídeo ativado.");
+    console.log("[PRODUÇÃO] Monitor de progresso VSL iniciado.");
 
-    const handleVideoEvent = (event: MessageEvent) => {
-      // VTurb envia mensagens via postMessage
-      // Pode vir como string ou objeto dependendo da versão/configuração
+    const handleVideoMessages = (event: MessageEvent) => {
       const data = event.data;
       
-      console.log("[DEBUG] Mensagem recebida do player:", data);
+      // Monitoramento de progresso em tempo real
+      // Formato padrão VTurb: { event: "video_progress", data: { percentage: X } }
+      if (data?.event === "video_progress" || data?.type === "video_progress") {
+        const percentage = data.data?.percentage || data.percentage || 0;
+        console.log(`[VTurb] Progresso atual: ${percentage}%`);
 
-      // Verificação robusta de múltiplos possíveis formatos de evento de término
-      const isVideoEnd = 
+        // Desbloqueio seguro aos 90% (À prova do bug dos 99%)
+        if (percentage >= 90 && !unlockedRef.current) {
+          console.log("[VTurb] Limite de 90% atingido. DESBLOQUEANDO OFERTA.");
+          unlockedRef.current = true;
+          setIsUnlocked(true);
+        }
+      }
+
+      // Eventos de finalização como redundância
+      const isEndEvent = 
         data === "VSL_FINISHED" || 
         data === "smartplayer_video_end" ||
-        data?.event === "video_end" || 
-        data?.type === "video_end" ||
-        (typeof data === "string" && data.includes("video_end"));
+        data?.event === "video_end";
 
-      if (isVideoEnd) {
-        console.log("[DEBUG] EVENTO DE TÉRMINO DETECTADO! Desbloqueando página de vendas...");
+      if (isEndEvent && !unlockedRef.current) {
+        console.log("[VTurb] Evento de finalização recebido. DESBLOQUEANDO OFERTA.");
+        unlockedRef.current = true;
         setIsUnlocked(true);
       }
     };
 
-    window.addEventListener("message", handleVideoEvent);
-    
-    // Fallback apenas para ambiente de desenvolvimento local ou Preview do AI Studio
-    // Isso permite que você teste o design sem ver o vídeo todo se desejar, 
-    // mas em produção o evento REAL deve comandar.
-    const isDevelopment = window.location.hostname === "localhost" || window.location.hostname.includes("aistudio");
-    if (isDevelopment) {
-       console.log("[DEBUG] Detectado ambiente de teste. Fallback de 10s ativo.");
-       const timer = setTimeout(() => {
-         if (!isUnlocked) {
-            console.log("[DEBUG] Fallback de teste: Desbloqueando...");
-            setIsUnlocked(true);
-         }
-       }, 10000);
-       return () => {
-         clearTimeout(timer);
-         window.removeEventListener("message", handleVideoEvent);
-       }
+    window.addEventListener("message", handleVideoMessages);
+
+    // Em ambiente de Preview/Studio, facilitamos o teste, mas em produção o evento domina.
+    const isLocalTest = window.location.hostname === "localhost" || window.location.hostname.includes("aistudio");
+    if (isLocalTest) {
+      const t = setTimeout(() => {
+        if (!unlockedRef.current) {
+          console.log("[TESTE] Desbloqueio automático de preview ativo.");
+          unlockedRef.current = true;
+          setIsUnlocked(true);
+        }
+      }, 8000);
+      return () => {
+        clearTimeout(t);
+        window.removeEventListener("message", handleVideoMessages);
+      };
     }
 
-    return () => window.removeEventListener("message", handleVideoEvent);
-  }, [isUnlocked]);
+    return () => window.removeEventListener("message", handleVideoMessages);
+  }, []);
 
   return (
     <div className="min-h-screen bg-white overflow-x-hidden selection:bg-magenta-100">
-      {/* SEÇÃO VSL - SEMPRE VISÍVEL NO TOPO */}
+      {/* SEÇÃO VSL - FIXA NO TOPO ATÉ O TÉRMINO */}
       <div className="bg-[#0b0014] py-12 px-4 shadow-inner">
         <div className="max-w-4xl mx-auto text-center mb-8">
            <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight mb-2">Seu Diagnóstico está Pronto!</h2>
@@ -354,11 +359,10 @@ const FinalOfferStep: React.FC = () => {
         <VSLPlayer />
       </div>
 
-      {/* PÁGINA DE VENDAS - BLOQUEADA POR ESTADO */}
+      {/* CONTEÚDO DA SALES PAGE - BLOQUEADO ATÉ >= 90% PROGRESO */}
       <div 
         id="sales-page" 
-        style={{ display: isUnlocked ? 'block' : 'none' }}
-        className={`fade-in ${isUnlocked ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`transition-all duration-1000 ease-in-out ${isUnlocked ? 'block opacity-100 translate-y-0' : 'hidden opacity-0 translate-y-10'}`}
       >
         {/* Headline Principal */}
         <div className="max-w-4xl mx-auto px-6 py-16 text-center space-y-8">
@@ -431,7 +435,7 @@ const FinalOfferStep: React.FC = () => {
 
             <button 
               onClick={() => {
-                 console.log("[DEBUG] Clique no botão de compra detectado.");
+                 console.log("[COMPRA] Iniciando checkout Kiwify...");
                  window.open('https://pay.kiwify.com.br/hC6S0pP', '_blank');
               }}
               className="w-full py-8 bg-[#25D366] text-white font-black rounded-[2rem] text-xl md:text-3xl shadow-2xl hover:bg-green-600 transition transform hover:scale-105 active:scale-95 animate-pulse uppercase tracking-tight"
@@ -469,7 +473,6 @@ const App: React.FC = () => {
     seq.push({ type: StepType.CAROUSEL_BEFORE_AFTER });
     QUESTIONS_STAGE_2.forEach(q => seq.push({ type: StepType.QUESTION, question: q }));
     seq.push({ type: StepType.DIAGNOSIS_2 });
-    // Fix: Removed incorrect reference to StepType.QUESTIONS_STAGE_3 which was causing a TypeScript error
     QUESTIONS_STAGE_3.forEach(q => seq.push({ type: StepType.QUESTION, question: q }));
     seq.push({ type: StepType.TESTIMONIALS });
     seq.push({ type: StepType.DIAGNOSIS_3 });
