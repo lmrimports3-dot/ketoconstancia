@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { StepType, QuizState, QuizQuestion } from './types.ts';
 import { 
   COLORS, 
@@ -268,163 +268,184 @@ const LoadingStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
 // --- COMPONENTE VSL OBRIGATÓRIO ---
 
 const VSLPlayer: React.FC = () => {
-  const isPreview = useMemo(() => {
-    return window.location.hostname.includes("googleusercontent") || window.location.hostname.includes("aistudio") || window.location.hostname === "localhost";
+  useEffect(() => {
+    console.log("[DEBUG] Carregando Player VTurb...");
+    const s = document.createElement("script");
+    s.src = "https://scripts.converteai.net/d8154a78-90e0-4096-8a57-1af2803d66bb/players/69737ebe325672f377a0cc0b/v4/player.js";
+    s.async = true;
+    document.head.appendChild(s);
+    return () => {
+      // Cleanup do script se necessário
+    };
   }, []);
 
-  useEffect(() => {
-    if (!isPreview) {
-      const s = document.createElement("script");
-      s.src = "https://scripts.converteai.net/d8154a78-90e0-4096-8a57-1af2803d66bb/players/69737ebe325672f377a0cc0b/v4/player.js";
-      s.async = true;
-      document.head.appendChild(s);
-    }
-  }, [isPreview]);
-
   return (
-    <div className="vsl-container">
-      {isPreview ? (
-        <div className="vsl-placeholder">
-          <div className="play-icon">▶️</div>
-          <p>O vídeo será carregado automaticamente após a publicação</p>
-        </div>
-      ) : (
-        <div dangerouslySetInnerHTML={{ 
-          __html: `<vturb-smartplayer id="vid-69737ebe325672f377a0cc0b" style="display: block; margin: 0 auto; width: 100%; aspect-ratio: 16/9;"></vturb-smartplayer>` 
-        }} />
-      )}
+    <div className="vsl-container w-full max-w-[720px] mx-auto px-4">
+      <vturb-smartplayer 
+        id="vid-69737ebe325672f377a0cc0b" 
+        style={{ display: 'block', margin: '0 auto', width: '100%', aspectRatio: '16/9' }}
+      ></vturb-smartplayer>
     </div>
   );
 };
 
-// --- SALES PAGE FINAL ---
+// --- SALES PAGE FINAL COM DESBLOQUEIO REAL ---
 
 const FinalOfferStep: React.FC = () => {
-  const [contentVisible, setContentVisible] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(false);
   
-  const isPreview = useMemo(() => {
-    return window.location.hostname.includes("googleusercontent") || window.location.hostname.includes("aistudio") || window.location.hostname === "localhost";
-  }, []);
-
   useEffect(() => {
-    const handleVslMessage = (event: MessageEvent) => {
-      if (event.data === "VSL_FINISHED") {
-        setContentVisible(true);
+    console.log("[DEBUG] Listener de eventos do vídeo ativado.");
+
+    const handleVideoEvent = (event: MessageEvent) => {
+      // VTurb envia mensagens via postMessage
+      // Pode vir como string ou objeto dependendo da versão/configuração
+      const data = event.data;
+      
+      console.log("[DEBUG] Mensagem recebida do player:", data);
+
+      // Verificação robusta de múltiplos possíveis formatos de evento de término
+      const isVideoEnd = 
+        data === "VSL_FINISHED" || 
+        data === "smartplayer_video_end" ||
+        data?.event === "video_end" || 
+        data?.type === "video_end" ||
+        (typeof data === "string" && data.includes("video_end"));
+
+      if (isVideoEnd) {
+        console.log("[DEBUG] EVENTO DE TÉRMINO DETECTADO! Desbloqueando página de vendas...");
+        setIsUnlocked(true);
       }
     };
-    window.addEventListener("message", handleVslMessage);
+
+    window.addEventListener("message", handleVideoEvent);
     
-    // Fallback para visualização em preview (libera após 15s se não houver mensagem)
-    if (isPreview) {
-      const timer = setTimeout(() => setContentVisible(true), 15000);
-      return () => {
-        clearTimeout(timer);
-        window.removeEventListener("message", handleVslMessage);
-      };
+    // Fallback apenas para ambiente de desenvolvimento local ou Preview do AI Studio
+    // Isso permite que você teste o design sem ver o vídeo todo se desejar, 
+    // mas em produção o evento REAL deve comandar.
+    const isDevelopment = window.location.hostname === "localhost" || window.location.hostname.includes("aistudio");
+    if (isDevelopment) {
+       console.log("[DEBUG] Detectado ambiente de teste. Fallback de 10s ativo.");
+       const timer = setTimeout(() => {
+         if (!isUnlocked) {
+            console.log("[DEBUG] Fallback de teste: Desbloqueando...");
+            setIsUnlocked(true);
+         }
+       }, 10000);
+       return () => {
+         clearTimeout(timer);
+         window.removeEventListener("message", handleVideoEvent);
+       }
     }
 
-    return () => window.removeEventListener("message", handleVslMessage);
-  }, [isPreview]);
+    return () => window.removeEventListener("message", handleVideoEvent);
+  }, [isUnlocked]);
 
   return (
-    <div className="min-h-screen bg-white overflow-x-hidden">
-      {/* VSL NO TOPO */}
-      <div className="bg-[#0b0014] py-8 px-4 border-b border-white/5">
-        <div className="max-w-4xl mx-auto text-center mb-6">
-           <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">Análise Finalizada! Assista para liberar sua vaga:</h2>
+    <div className="min-h-screen bg-white overflow-x-hidden selection:bg-magenta-100">
+      {/* SEÇÃO VSL - SEMPRE VISÍVEL NO TOPO */}
+      <div className="bg-[#0b0014] py-12 px-4 shadow-inner">
+        <div className="max-w-4xl mx-auto text-center mb-8">
+           <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight mb-2">Seu Diagnóstico está Pronto!</h2>
+           <p className="text-gray-400 font-medium italic">Assista ao vídeo abaixo para liberar seu acesso exclusivo</p>
         </div>
         <VSLPlayer />
       </div>
 
-      {/* CONTEÚDO BLOQUEADO - SÓ APARECE PÓS VSL */}
-      {contentVisible && (
-        <div id="sales-page" className="fade-in">
-          {/* Headline Principal */}
-          <div className="max-w-4xl mx-auto px-6 py-16 text-center space-y-8">
-            <h1 className="text-4xl md:text-6xl font-black leading-tight tracking-tighter" style={{ color: COLORS.PURPLE }}>
-              Você não precisa tentar mais nada.<br/>
-              <span style={{ color: COLORS.MAGENTA }}>Você só precisa seguir o plano certo.</span>
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-600 font-medium max-w-3xl mx-auto leading-relaxed border-t-2 border-magenta-50 pt-8" style={{ borderTopColor: `${COLORS.MAGENTA}10` }}>
-              O Método Constância Keto™ mostra exatamente o que comer, como ajustar e como manter o resultado sem efeito sanfona, sem dietas malucas e sem sofrimento.
-            </p>
+      {/* PÁGINA DE VENDAS - BLOQUEADA POR ESTADO */}
+      <div 
+        id="sales-page" 
+        style={{ display: isUnlocked ? 'block' : 'none' }}
+        className={`fade-in ${isUnlocked ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+      >
+        {/* Headline Principal */}
+        <div className="max-w-4xl mx-auto px-6 py-16 text-center space-y-8">
+          <h1 className="text-4xl md:text-6xl font-black leading-tight tracking-tighter" style={{ color: COLORS.PURPLE }}>
+            Você não precisa tentar mais nada.<br/>
+            <span style={{ color: COLORS.MAGENTA }}>Você só precisa seguir o plano certo.</span>
+          </h1>
+          <p className="text-xl md:text-2xl text-gray-600 font-medium max-w-3xl mx-auto leading-relaxed border-t-2 pt-8" style={{ borderTopColor: `${COLORS.MAGENTA}15` }}>
+            O Método Constância Keto™ mostra exatamente o que comer, como ajustar e como manter o resultado sem efeito sanfona, sem dietas malucas e sem sofrimento.
+          </p>
+        </div>
+
+        {/* Bloco de Benefícios */}
+        <div className="bg-[#FDFDFD] py-20 px-6 border-y border-gray-50">
+          <div className="max-w-xl mx-auto space-y-6">
+            <h3 className="text-2xl font-black text-center mb-10" style={{ color: COLORS.PURPLE }}>Com acesso imediato, você vai:</h3>
+            <ul className="grid gap-4">
+              {[
+                "Descobrir por que seu emagrecimento travou",
+                "Corrigir erros invisíveis que te fazem engordar",
+                "Emagrecer com constância, mesmo sem tempo",
+                "Seguir um plano simples e possível",
+                "Parar de recomeçar toda segunda-feira"
+              ].map((item, i) => (
+                <li key={i} className="flex items-center gap-4 p-5 bg-white rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition duration-300">
+                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm">✔</span>
+                  <span className="text-lg font-bold text-gray-700">{item}</span>
+                </li>
+              ))}
+            </ul>
           </div>
+        </div>
 
-          {/* Bloco de Benefícios */}
-          <div className="bg-[#FDFDFD] py-16 px-6 border-y border-gray-50">
-            <div className="max-w-xl mx-auto space-y-6">
-              <h3 className="text-2xl font-black text-center mb-10" style={{ color: COLORS.PURPLE }}>Com acesso imediato, você vai:</h3>
-              <ul className="space-y-4">
-                {[
-                  "Descobrir por que seu emagrecimento travou",
-                  "Corrigir erros invisíveis que te fazem engordar",
-                  "Emagrecer com constância, mesmo sem tempo",
-                  "Seguir um plano simples e possível",
-                  "Parar de recomeçar toda segunda-feira"
-                ].map((item, i) => (
-                  <li key={i} className="flex items-center gap-4 p-5 bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-magenta-100 transition duration-300">
-                    <span className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold">✔</span>
-                    <span className="text-lg font-bold text-gray-700">{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+        {/* Autoridade Emocional */}
+        <div className="max-w-3xl mx-auto px-6 py-24 text-center space-y-8">
+          <div className="w-16 h-1 bg-magenta-500 mx-auto" style={{ backgroundColor: COLORS.MAGENTA }}></div>
+          <h2 className="text-3xl md:text-5xl font-black leading-tight" style={{ color: COLORS.PURPLE }}>
+            Este método não é uma dieta da moda e não depende de força de vontade infinita.
+          </h2>
+          <p className="text-xl md:text-2xl text-gray-500 font-medium italic">
+            Ele funciona porque se adapta ao seu corpo, ao seu ritmo e à sua realidade.
+          </p>
+        </div>
 
-          {/* Autoridade Emocional */}
-          <div className="max-w-3xl mx-auto px-6 py-20 text-center space-y-8">
-            <div className="w-16 h-1 bg-magenta-500 mx-auto" style={{ backgroundColor: COLORS.MAGENTA }}></div>
-            <h2 className="text-3xl md:text-4xl font-black leading-tight" style={{ color: COLORS.PURPLE }}>
-              Este método não é uma dieta da moda e não depende de força de vontade infinita.
-            </h2>
-            <p className="text-xl md:text-2xl text-gray-500 font-medium italic">
-              Ele funciona porque se adapta ao seu corpo, ao seu ritmo e à sua realidade.
-            </p>
-          </div>
-
-          {/* Oferta Irresistível */}
-          <div className="max-w-2xl mx-auto px-6 pb-32">
-            <div className="bg-white rounded-[3rem] shadow-2xl border-[6px] p-8 md:p-12 text-center relative overflow-hidden" style={{ borderColor: COLORS.PURPLE }}>
-              <div className="absolute top-0 right-0 p-4 bg-yellow-400 font-black text-xs uppercase tracking-widest rotate-12 translate-x-6 -translate-y-2 shadow-lg">Oferta Vitalícia</div>
-              
-              <h3 className="text-2xl md:text-3xl font-black mb-8 leading-tight" style={{ color: COLORS.PURPLE }}>Acesso Completo ao Método Constância Keto™</h3>
-              
-              <div className="grid grid-cols-2 gap-3 mb-10">
-                {["Compra única", "Sem mensalidade", "Sem renovação", "Acesso imediato"].map((tag, i) => (
-                  <div key={i} className="flex items-center justify-center gap-2 font-bold text-gray-500 uppercase text-[10px] tracking-wider py-2 bg-gray-50 rounded-lg">
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS.MAGENTA }}></span>
-                    {tag}
-                  </div>
-                ))}
-              </div>
-
-              <div className="mb-10">
-                <div className="flex justify-center items-baseline gap-2">
-                  <span className="text-2xl font-black text-gray-900">Hoje por</span>
-                  <span className="text-6xl md:text-8xl font-black tracking-tighter" style={{ color: COLORS.MAGENTA }}>R$ 27,90</span>
+        {/* Oferta Irresistível */}
+        <div className="max-w-2xl mx-auto px-6 pb-32">
+          <div className="bg-white rounded-[3.5rem] shadow-2xl border-[6px] p-8 md:p-14 text-center relative overflow-hidden" style={{ borderColor: COLORS.PURPLE }}>
+            <div className="absolute top-0 right-0 p-4 bg-yellow-400 font-black text-[10px] uppercase tracking-widest rotate-12 translate-x-8 -translate-y-2 shadow-xl">Acesso Vitalício</div>
+            
+            <h3 className="text-2xl md:text-4xl font-black mb-10 leading-tight" style={{ color: COLORS.PURPLE }}>Acesso Completo ao Método Constância Keto™</h3>
+            
+            <div className="grid grid-cols-2 gap-3 mb-12">
+              {["Compra única", "Sem mensalidade", "Sem renovação", "Acesso imediato"].map((tag, i) => (
+                <div key={i} className="flex items-center justify-center gap-2 font-bold text-gray-500 uppercase text-[9px] tracking-widest py-3 bg-gray-50 rounded-2xl">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS.MAGENTA }}></span>
+                  {tag}
                 </div>
-                <p className="mt-4 text-gray-500 font-bold italic text-lg">
-                  Menos do que você gasta em um lanche que atrasa seu resultado.
-                </p>
-              </div>
+              ))}
+            </div>
 
-              <button 
-                onClick={() => window.open('https://pay.kiwify.com.br/hC6S0pP', '_blank')}
-                className="w-full py-8 bg-[#25D366] text-white font-black rounded-3xl text-xl md:text-3xl shadow-2xl hover:bg-green-600 transition transform hover:scale-105 active:scale-95 animate-pulse uppercase tracking-tight"
-              >
-                SIM, QUERO EMAGRECER COM CONSTÂNCIA
-              </button>
-
-              <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-4 opacity-70">
-                <div className="flex flex-col items-center"><span className="text-2xl">🔒</span><span className="text-[10px] font-bold uppercase mt-1">100% Seguro</span></div>
-                <div className="flex flex-col items-center"><span className="text-2xl">⚡</span><span className="text-[10px] font-bold uppercase mt-1">Imediato</span></div>
-                <div className="flex flex-col items-center"><span className="text-2xl">📱</span><span className="text-[10px] font-bold uppercase mt-1">No Celular</span></div>
-                <div className="flex flex-col items-center"><span className="text-2xl">📩</span><span className="text-[10px] font-bold uppercase mt-1">Suporte</span></div>
+            <div className="mb-12">
+              <div className="flex justify-center items-baseline gap-2">
+                <span className="text-2xl font-black text-gray-900">Hoje por</span>
+                <span className="text-7xl md:text-8xl font-black tracking-tighter" style={{ color: COLORS.MAGENTA }}>R$ 27,90</span>
               </div>
+              <p className="mt-6 text-gray-500 font-bold italic text-lg leading-relaxed">
+                Menos do que você gasta em um lanche que atrasa seu resultado.
+              </p>
+            </div>
+
+            <button 
+              onClick={() => {
+                 console.log("[DEBUG] Clique no botão de compra detectado.");
+                 window.open('https://pay.kiwify.com.br/hC6S0pP', '_blank');
+              }}
+              className="w-full py-8 bg-[#25D366] text-white font-black rounded-[2rem] text-xl md:text-3xl shadow-2xl hover:bg-green-600 transition transform hover:scale-105 active:scale-95 animate-pulse uppercase tracking-tight"
+            >
+              SIM, QUERO EMAGRECER COM CONSTÂNCIA
+            </button>
+
+            <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-6 opacity-80">
+              <div className="flex flex-col items-center"><span className="text-3xl">🔒</span><span className="text-[10px] font-black uppercase mt-2">100% Seguro</span></div>
+              <div className="flex flex-col items-center"><span className="text-3xl">⚡</span><span className="text-[10px] font-black uppercase mt-2">Imediato</span></div>
+              <div className="flex flex-col items-center"><span className="text-3xl">📱</span><span className="text-[10px] font-black uppercase mt-2">No Celular</span></div>
+              <div className="flex flex-col items-center"><span className="text-3xl">📩</span><span className="text-[10px] font-black uppercase mt-2">Suporte VIP</span></div>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
