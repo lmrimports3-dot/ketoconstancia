@@ -1,0 +1,663 @@
+
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { StepType, QuizState, QuizQuestion } from './types';
+import { 
+  COLORS, 
+  QUESTIONS_STAGE_1, 
+  QUESTIONS_STAGE_2, 
+  QUESTIONS_STAGE_3, 
+  QUESTIONS_STAGE_4,
+  TESTIMONIALS, 
+  TRANSFORMATIONS 
+} from './constants';
+
+// --- COMPONENTES ATÔMICOS ---
+
+const ProgressBar: React.FC<{ progress: number }> = ({ progress }) => (
+  <div className="fixed top-0 left-0 w-full h-3 bg-gray-200 z-50 shadow-sm">
+    <div 
+      className="h-full transition-all duration-500 ease-out" 
+      style={{ 
+        width: `${progress}%`,
+        background: `linear-gradient(90deg, ${COLORS.MAGENTA}, ${COLORS.PURPLE})`
+      }}
+    />
+  </div>
+);
+
+const Splash: React.FC<{ onNext: () => void }> = ({ onNext }) => (
+  <div className="min-h-screen flex flex-col items-center bg-[#FDFDFD] relative overflow-hidden">
+    <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-magenta-100/30 rounded-full blur-[120px]" style={{ backgroundColor: `${COLORS.MAGENTA}15` }}></div>
+    <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-100/30 rounded-full blur-[120px]" style={{ backgroundColor: `${COLORS.PURPLE}10` }}></div>
+
+    <div className="w-full max-w-2xl px-6 pt-12 pb-24 flex flex-col items-center text-center z-10 fade-in">
+      <div className="inline-block px-4 py-2 rounded-full bg-gray-100 border border-gray-200 mb-8">
+        <span className="text-xs md:text-sm font-bold text-gray-700 tracking-tight flex items-center gap-2">
+          ✨ Funciona mesmo se você já tentou de tudo
+        </span>
+      </div>
+
+      <h1 className="text-3xl md:text-5xl font-black leading-tight mb-6" style={{ color: COLORS.PURPLE }}>
+        Descubra o que está travando seu emagrecimento — <span style={{ color: COLORS.MAGENTA }}>e como corrigir isso no seu caso</span>
+      </h1>
+
+      <p className="text-lg md:text-xl text-gray-600 font-medium mb-10 max-w-lg mx-auto">
+        Um diagnóstico rápido que mostra como emagrecer com constância, sem dietas impossíveis e sem medo de errar.
+      </p>
+
+      <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-2xl mb-12 border-4 border-white bg-white">
+        <img 
+          src="https://ik.imagekit.io/ekdmcxqtr/carousel_antes_depois_5.jpg?updatedAt=1769185371523" 
+          alt="Transformação Método Constância Keto" 
+          className="w-full h-auto object-cover"
+        />
+      </div>
+
+      <div className="flex items-center justify-center gap-6 mb-6 text-sm font-bold text-gray-400">
+        <div className="flex items-center gap-2">
+          <span>⏱️</span> Leva menos de 1 minuto
+        </div>
+        <div className="flex items-center gap-2">
+          <span>🔒</span> 100% gratuito
+        </div>
+      </div>
+
+      <button 
+        onClick={onNext}
+        className="w-full py-6 text-white font-black rounded-3xl text-xl md:text-2xl shadow-2xl transform transition hover:scale-105 active:scale-95 animate-pulse"
+        style={{ background: `linear-gradient(135deg, ${COLORS.MAGENTA}, #C2185B)` }}
+      >
+        QUERO DESCOBRIR MEU DIAGNÓSTICO
+      </button>
+    </div>
+  </div>
+);
+
+const QuestionStep: React.FC<{ 
+  question: QuizQuestion, 
+  answers: Record<string, string>, 
+  onAnswer: (qId: string, optId: string) => void,
+  onPrev: () => void,
+  onNext: () => void
+}> = ({ question, answers, onAnswer, onPrev, onNext }) => {
+  const isSelected = (optId: string) => answers[question.id] === optId;
+
+  return (
+    <div className="min-h-screen pt-16 pb-32 px-4 md:px-12 max-w-4xl mx-auto flex flex-col justify-center fade-in bg-[#F5F5F5]">
+      <div className="text-center mb-10">
+        <h2 className="text-2xl md:text-4xl font-bold mb-4" style={{ color: COLORS.PURPLE }}>{question.headline}</h2>
+        <p className="text-gray-600 text-lg">{question.subheadlineText}</p>
+      </div>
+
+      <div className={`grid gap-4 ${question.layout === 'grid' ? (question.columns === 4 ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2') : 'grid-cols-1'}`}>
+        {question.options.map((opt) => (
+          <div 
+            key={opt.id}
+            onClick={() => {
+              onAnswer(question.id, opt.id);
+              if (!question.multiSelect) onNext();
+            }}
+            className={`p-5 rounded-2xl border-2 cursor-pointer transition-all duration-200 transform hover:shadow-md flex items-center space-x-4
+              ${isSelected(opt.id) ? 'bg-purple-50' : 'bg-white border-white'}
+            `}
+            style={{ 
+              borderColor: isSelected(opt.id) ? COLORS.MAGENTA : 'white',
+              transform: isSelected(opt.id) ? 'scale(1.02)' : 'scale(1)'
+            }}
+          >
+            {opt.imageUrl && <img src={opt.imageUrl} alt={opt.label} className="w-16 h-16 rounded-xl object-cover shadow-sm" />}
+            {!opt.imageUrl && <span className="text-4xl">{opt.icon}</span>}
+            <div className="flex-1">
+              <h3 className="font-bold text-lg" style={{ color: isSelected(opt.id) ? COLORS.MAGENTA : COLORS.PURPLE }}>{opt.label}</h3>
+              {opt.description && <p className="text-sm text-gray-500">{opt.description}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="fixed bottom-0 left-0 w-full p-6 bg-white border-t border-gray-200 flex justify-between items-center z-40">
+        <button onClick={onPrev} className="text-gray-500 font-bold px-6 py-3 hover:bg-gray-100 rounded-xl transition">← Voltar</button>
+        {question.multiSelect && (
+          <button 
+            onClick={onNext}
+            className="px-10 py-4 rounded-xl font-bold text-white transition-all shadow-lg hover:scale-105"
+            style={{ background: COLORS.MAGENTA }}
+          >
+            Próximo Passo →
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const MetricQuestionStep: React.FC<{ 
+  question: QuizQuestion, 
+  answers: Record<string, string>, 
+  onAnswer: (qId: string, value: string) => void,
+  onPrev: () => void,
+  onNext: () => void
+}> = ({ question, answers, onAnswer, onPrev, onNext }) => {
+  const currentValue = parseInt(answers[question.id] || String(question.defaultValue || 70));
+  
+  const handleUpdate = (val: number) => {
+    const clamped = Math.max(question.min || 0, Math.min(question.max || 300, val));
+    onAnswer(question.id, String(clamped));
+  };
+
+  return (
+    <div className="min-h-screen pt-16 pb-32 px-4 md:px-12 max-w-4xl mx-auto flex flex-col justify-center fade-in bg-[#F5F5F5]">
+      <div className="text-center mb-10">
+        <h2 className="text-3xl md:text-4xl font-black mb-4" style={{ color: COLORS.PURPLE }}>{question.headline}</h2>
+        <p className="text-gray-600 text-lg">{question.subheadlineText}</p>
+      </div>
+
+      <div className="flex flex-col items-center justify-center space-y-8 bg-white p-10 md:p-16 rounded-[3rem] shadow-2xl border border-gray-100">
+        <div className="flex items-baseline space-x-4">
+          <span className="text-8xl md:text-9xl font-black tracking-tighter" style={{ color: COLORS.MAGENTA }}>{currentValue}</span>
+          <span className="text-3xl font-bold text-gray-400 uppercase">{question.unit}</span>
+        </div>
+
+        <div className="flex items-center space-x-6 w-full max-w-sm">
+          <button 
+            onClick={() => handleUpdate(currentValue - 1)}
+            className="w-20 h-20 rounded-full border-4 flex items-center justify-center text-4xl font-black hover:bg-gray-50 transition active:scale-90 shadow-lg"
+            style={{ borderColor: COLORS.PURPLE, color: COLORS.PURPLE }}
+          >
+            -
+          </button>
+          
+          <input 
+            type="range"
+            min={question.min}
+            max={question.max}
+            value={currentValue}
+            onChange={(e) => handleUpdate(parseInt(e.target.value))}
+            className="flex-1 h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-magenta"
+            style={{ accentColor: COLORS.MAGENTA }}
+          />
+
+          <button 
+            onClick={() => handleUpdate(currentValue + 1)}
+            className="w-20 h-20 rounded-full border-4 flex items-center justify-center text-4xl font-black hover:bg-gray-50 transition active:scale-90 shadow-lg"
+            style={{ borderColor: COLORS.PURPLE, color: COLORS.PURPLE }}
+          >
+            +
+          </button>
+        </div>
+      </div>
+
+      <div className="fixed bottom-0 left-0 w-full p-6 bg-white border-t border-gray-200 flex justify-between items-center z-40">
+        <button onClick={onPrev} className="text-gray-500 font-bold px-6 py-3 hover:bg-gray-100 rounded-xl transition">← Voltar</button>
+        <button 
+          onClick={onNext}
+          className="px-12 py-5 rounded-2xl font-bold text-white shadow-xl transition transform hover:scale-105"
+          style={{ background: COLORS.MAGENTA }}
+        >
+          Confirmar Dados →
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const DiagnosisStep: React.FC<{ 
+  title: string, 
+  content: string, 
+  icon: string,
+  onNext: () => void 
+}> = ({ title, content, icon, onNext }) => (
+  <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-white text-center">
+    <div className="max-w-xl space-y-8 fade-in">
+      <div className="w-24 h-24 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <span className="text-5xl">{icon}</span>
+      </div>
+      <h2 className="text-3xl md:text-4xl font-black" style={{ color: COLORS.PURPLE }}>{title}</h2>
+      <p className="text-xl text-gray-600 leading-relaxed">{content}</p>
+      <button 
+        onClick={onNext}
+        className="w-full py-5 text-white font-bold rounded-2xl text-xl shadow-lg transition hover:scale-105"
+        style={{ background: COLORS.PURPLE }}
+      >
+        Continuar Análise →
+      </button>
+    </div>
+  </div>
+);
+
+const CarouselStep: React.FC<{ onNext: () => void }> = ({ onNext }) => {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveIndex((current) => (current + 1) % TRANSFORMATIONS.length);
+    }, 4000); 
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[#F5F5F5]">
+      <div className="max-w-lg w-full space-y-8 fade-in flex flex-col items-center">
+        <div className="text-center mb-4">
+          <h2 className="text-3xl font-black mb-2" style={{ color: COLORS.PURPLE }}>Resultados Reais</h2>
+          <p className="text-gray-500">Veja o que a constância pode fazer por você</p>
+        </div>
+        
+        <div className="w-full relative overflow-hidden rounded-[2.5rem] shadow-2xl border-4 border-white bg-white aspect-[4/5] md:aspect-square">
+          {TRANSFORMATIONS.map((t, i) => (
+            <div 
+              key={i} 
+              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out flex flex-col ${i === activeIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+            >
+              <img src={t.image} alt={t.label} className="w-full flex-1 object-cover" />
+              <div className="p-6 bg-white border-t border-gray-100 text-center">
+                <span className="inline-block px-4 py-1.5 bg-green-100 text-green-700 text-sm font-bold rounded-full mb-3">{t.result}</span>
+                <p className="text-gray-600 italic font-medium">"{t.text}"</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex space-x-3 mt-4">
+          {TRANSFORMATIONS.map((_, i) => (
+            <button 
+              key={i}
+              onClick={() => setActiveIndex(i)}
+              className={`h-2.5 rounded-full transition-all duration-300 ${i === activeIndex ? 'w-8' : 'w-2.5 bg-gray-300'}`}
+              style={{ backgroundColor: i === activeIndex ? COLORS.MAGENTA : '' }}
+            />
+          ))}
+        </div>
+
+        <button 
+          onClick={onNext}
+          className="w-full py-5 mt-6 text-white font-black rounded-2xl text-xl shadow-lg transition transform hover:scale-105 active:scale-95"
+          style={{ background: COLORS.MAGENTA }}
+        >
+          Eu quero esses resultados!
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const TestimonialsStep: React.FC<{ onNext: () => void }> = ({ onNext }) => {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveIndex((current) => (current + 1) % TESTIMONIALS.length);
+    }, 4500); 
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-white">
+      <div className="max-w-lg w-full space-y-8 fade-in flex flex-col items-center">
+        <div className="text-center mb-4">
+          <h2 className="text-3xl font-black mb-2" style={{ color: COLORS.PURPLE }}>Milhares de Vidas Transformadas</h2>
+          <p className="text-gray-500">Histórias reais de quem acreditou no método</p>
+        </div>
+        
+        <div className="w-full relative overflow-hidden rounded-[2.5rem] shadow-2xl border-4 border-gray-50 bg-gray-50 aspect-[4/5] md:aspect-square">
+          {TESTIMONIALS.map((t, i) => (
+            <div 
+              key={i} 
+              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out flex flex-col ${i === activeIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
+            >
+              <img src={t.image} alt={t.name} className="w-full flex-1 object-cover" />
+              <div className="p-8 bg-white border-t border-gray-100">
+                <div className="flex items-center justify-between mb-3">
+                   <h4 className="font-black text-lg" style={{ color: COLORS.PURPLE }}>{t.name}, {t.age} anos</h4>
+                   <span className="font-bold text-sm px-3 py-1 bg-magenta-50 rounded-full" style={{ color: COLORS.MAGENTA }}>{t.result}</span>
+                </div>
+                <p className="text-gray-600 italic leading-relaxed">"{t.text}"</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Indicadores */}
+        <div className="flex space-x-3 mt-4">
+          {TESTIMONIALS.map((_, i) => (
+            <button 
+              key={i}
+              onClick={() => setActiveIndex(i)}
+              className={`h-2.5 rounded-full transition-all duration-300 ${i === activeIndex ? 'w-8' : 'w-2.5 bg-gray-200'}`}
+              style={{ backgroundColor: i === activeIndex ? COLORS.PURPLE : '' }}
+            />
+          ))}
+        </div>
+
+        <button 
+          onClick={onNext}
+          className="w-full py-5 mt-6 text-white font-black rounded-2xl text-xl shadow-lg transition transform hover:scale-105 active:scale-95"
+          style={{ background: COLORS.PURPLE }}
+        >
+          Quero transformar minha vida também →
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const EmailCaptureStep: React.FC<{ email: string, setEmail: (e: string) => void, onNext: () => void }> = ({ email, setEmail, onNext }) => (
+  <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[#F5F5F5]">
+    <div className="max-w-md w-full bg-white p-10 rounded-[2.5rem] shadow-2xl space-y-8 text-center border border-gray-100">
+      <div className="text-5xl mb-4">📧</div>
+      <h2 className="text-3xl font-black" style={{ color: COLORS.PURPLE }}>Para onde enviamos seu diagnóstico?</h2>
+      <p className="text-gray-500">Insira seu melhor e-mail para receber seu plano personalizado e o acesso à oferta exclusiva.</p>
+      <input 
+        type="email" 
+        placeholder="seu@email.com" 
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        className="w-full p-5 border-2 border-gray-100 rounded-2xl text-lg focus:outline-none focus:ring-4 focus:ring-purple-100 transition text-gray-900"
+      />
+      <button 
+        onClick={onNext}
+        disabled={!email || !email.includes('@')}
+        className={`w-full py-5 font-bold rounded-2xl text-xl shadow-lg transition transform ${!email || !email.includes('@') ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'hover:scale-105 text-white'}`}
+        style={{ backgroundColor: email.includes('@') ? COLORS.MAGENTA : '#EEE' }}
+      >
+        Ver Meu Resultado Agora!
+      </button>
+    </div>
+  </div>
+);
+
+const LoadingStep: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
+  const [progress, setProgress] = useState(0);
+  const [messageIndex, setMessageIndex] = useState(0);
+  const messages = [
+    "Analisando seu perfil biológico...",
+    "Cruzando dados com nosso banco de dados...",
+    "Personalizando seu protocolo de cetose...",
+    "Calculando sua taxa metabólica basal...",
+    "Finalizando seu plano exclusivo..."
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(timer);
+          setTimeout(onComplete, 500);
+          return 100;
+        }
+        return prev + 1;
+      });
+    }, 40);
+
+    const msgTimer = setInterval(() => {
+      setMessageIndex(prev => (prev + 1) % messages.length);
+    }, 1000);
+
+    return () => {
+      clearInterval(timer);
+      clearInterval(msgTimer);
+    };
+  }, [onComplete]);
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-white text-center">
+      <div className="max-w-md w-full space-y-10">
+        <div className="relative w-40 h-40 mx-auto">
+          <div className="absolute inset-0 border-8 border-gray-100 rounded-full"></div>
+          <div 
+            className="absolute inset-0 border-8 rounded-full border-t-transparent animate-spin" 
+            style={{ borderColor: `${COLORS.MAGENTA} transparent transparent transparent` }}
+          ></div>
+          <div className="absolute inset-0 flex items-center justify-center font-black text-3xl" style={{ color: COLORS.PURPLE }}>
+            {progress}%
+          </div>
+        </div>
+        <h3 className="text-2xl font-bold transition-all duration-300" style={{ color: COLORS.PURPLE }}>{messages[messageIndex]}</h3>
+        <p className="text-gray-400 italic">Por favor, não feche esta página...</p>
+      </div>
+    </div>
+  );
+};
+
+// --- COMPONENTE VSL OBRIGATÓRIO (FIX) ---
+
+const VSLPlayer: React.FC = () => {
+  const isPreview = useMemo(() => {
+    return window.location.hostname.includes("googleusercontent") ||
+           window.location.hostname.includes("aistudio") ||
+           window.location.hostname === "localhost";
+  }, []);
+
+  useEffect(() => {
+    if (!isPreview) {
+      const s = document.createElement("script");
+      s.src = "https://scripts.converteai.net/d8154a78-90e0-4096-8a57-1af2803d66bb/players/69737ebe325672f377a0cc0b/v4/player.js";
+      s.async = true;
+      document.head.appendChild(s);
+    }
+  }, [isPreview]);
+
+  return (
+    <div className="vsl-container">
+      {isPreview ? (
+        <div className="vsl-placeholder">
+          <div className="play-icon">▶️</div>
+          <p>O vídeo será carregado automaticamente após a publicação</p>
+        </div>
+      ) : (
+        <div dangerouslySetInnerHTML={{ 
+          __html: `<vturb-smartplayer id="vid-69737ebe325672f377a0cc0b" style="display: block; margin: 0 auto; width: 100%; aspect-ratio: 16/9;"></vturb-smartplayer>` 
+        }} />
+      )}
+    </div>
+  );
+};
+
+const FinalOfferStep: React.FC<{ answers: Record<string, string> }> = ({ answers }) => {
+  const pesoAtual = parseInt(answers['peso_atual'] || '75');
+  const pesoMeta = parseInt(answers['peso_meta'] || '60');
+  const perda = Math.max(0, pesoAtual - pesoMeta);
+
+  return (
+    <div className="min-h-screen bg-[#F5F5F5] pt-4 pb-20 px-4">
+      <div className="max-w-4xl mx-auto space-y-6 fade-in">
+        <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100">
+          <div className="p-8 text-center text-white space-y-2" style={{ background: `linear-gradient(135deg, ${COLORS.PURPLE}, #4A2B7A)` }}>
+            <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter">Diagnóstico Finalizado</h2>
+            <p className="text-lg opacity-90 font-medium">Assista ao vídeo abaixo para desbloquear seu plano</p>
+          </div>
+          
+          <div className="p-6 md:p-10 flex flex-col items-center">
+            {/* VSL NO TOPO */}
+            <VSLPlayer />
+
+            {/* CTA PRIMÁRIA - LOGO ABAIXO DA VSL (PRIMEIRA DOBRA) */}
+            <div className="w-full max-w-lg mb-10 text-center">
+              <button 
+                className="w-full py-6 bg-[#25D366] text-white font-black rounded-3xl text-xl md:text-2xl shadow-xl hover:bg-green-600 transition transform hover:scale-105 active:scale-95 animate-pulse flex items-center justify-center gap-3"
+                onClick={() => window.open('https://pay.kiwify.com.br/hC6S0pP', '_blank')}
+              >
+                QUERO MEU PLANO AGORA!
+              </button>
+              <div className="mt-4 flex items-baseline justify-center space-x-2">
+                <span className="text-gray-400 line-through text-lg">R$ 297,00</span>
+                <span className="text-3xl font-black" style={{ color: COLORS.MAGENTA }}>R$ 97,00</span>
+              </div>
+            </div>
+
+            {/* SEÇÃO DE RESULTADOS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mb-10">
+              <div className="bg-purple-50 p-6 rounded-3xl border border-purple-100 text-center">
+                <p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest mb-1">Seu Objetivo</p>
+                <p className="text-4xl font-black" style={{ color: COLORS.PURPLE }}>-{perda}kg</p>
+                <p className="mt-1 text-sm text-gray-600 font-medium">Peso total a eliminar</p>
+              </div>
+              <div className="bg-magenta-50 p-6 rounded-3xl border border-pink-100 text-center">
+                <p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest mb-1">Fase de Choque</p>
+                <p className="text-4xl font-black" style={{ color: COLORS.MAGENTA }}>14 Dias</p>
+                <p className="mt-1 text-sm text-gray-600 font-medium">Ativação da Cetose</p>
+              </div>
+            </div>
+
+            {/* SELOS DE SEGURANÇA */}
+            <div className="flex flex-wrap justify-center gap-6 opacity-60 grayscale scale-90">
+                <div className="flex flex-col items-center"><span className="text-2xl">🛡️</span><span className="text-[10px] font-bold">Compra Segura</span></div>
+                <div className="flex flex-col items-center"><span className="text-2xl">✅</span><span className="text-[10px] font-bold">Acesso Vitalício</span></div>
+                <div className="flex flex-col items-center"><span className="text-2xl">🏅</span><span className="text-[10px] font-bold">7 Dias de Garantia</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- COMPONENTE PRINCIPAL ---
+
+const App: React.FC = () => {
+  const [state, setState] = useState<QuizState>({
+    currentStepIndex: 0,
+    answers: {},
+    email: ''
+  });
+
+  const stepsSequence = useMemo(() => {
+    const seq = [];
+    seq.push({ type: StepType.SPLASH });
+    
+    // Stage 1
+    QUESTIONS_STAGE_1.forEach(q => seq.push({ type: StepType.QUESTION, question: q }));
+    seq.push({ type: StepType.DIAGNOSIS_1 });
+    seq.push({ type: StepType.CAROUSEL_BEFORE_AFTER });
+    
+    // Stage 2
+    QUESTIONS_STAGE_2.forEach(q => seq.push({ type: StepType.QUESTION, question: q }));
+    seq.push({ type: StepType.DIAGNOSIS_2 });
+    
+    // Stage 3
+    QUESTIONS_STAGE_3.forEach(q => seq.push({ type: StepType.QUESTION, question: q }));
+    seq.push({ type: StepType.TESTIMONIALS });
+    seq.push({ type: StepType.DIAGNOSIS_3 });
+    
+    // Stage 4
+    QUESTIONS_STAGE_4.forEach(q => seq.push({ type: StepType.METRIC_QUESTION, question: q }));
+    
+    seq.push({ type: StepType.EMAIL_CAPTURE });
+    seq.push({ type: StepType.LOADING });
+    seq.push({ type: StepType.FINAL_OFFER });
+    return seq;
+  }, []);
+
+  const nextStep = useCallback(() => {
+    setState(prev => {
+      const nextIndex = Math.min(prev.currentStepIndex + 1, stepsSequence.length - 1);
+      if (nextIndex !== prev.currentStepIndex) {
+        window.scrollTo(0, 0);
+      }
+      return { ...prev, currentStepIndex: nextIndex };
+    });
+  }, [stepsSequence.length]);
+
+  const prevStep = useCallback(() => {
+    setState(prev => {
+      const nextIndex = Math.max(prev.currentStepIndex - 1, 0);
+      if (nextIndex !== prev.currentStepIndex) {
+        window.scrollTo(0, 0);
+      }
+      return { ...prev, currentStepIndex: nextIndex };
+    });
+  }, []);
+
+  const handleAnswer = useCallback((qId: string, value: string) => {
+    setState(prev => ({
+      ...prev,
+      answers: { ...prev.answers, [qId]: String(value) }
+    }));
+  }, []);
+
+  const currentStepData = stepsSequence[state.currentStepIndex];
+  const progress = (state.currentStepIndex / (stepsSequence.length - 1)) * 100;
+
+  const renderStep = () => {
+    switch (currentStepData.type) {
+      case StepType.SPLASH:
+        return <Splash onNext={nextStep} />;
+      case StepType.QUESTION:
+        return (
+          <QuestionStep 
+            question={currentStepData.question!} 
+            answers={state.answers}
+            onAnswer={handleAnswer}
+            onPrev={prevStep}
+            onNext={nextStep}
+          />
+        );
+      case StepType.DIAGNOSIS_1:
+        return (
+          <DiagnosisStep 
+            icon="🧠"
+            title="Padrão Emocional Identificado"
+            content="Notamos que suas tentativas anteriores foram travadas por gatilhos de estresse. Nosso método foca em silenciar essa fome emocional para que a constância seja automática."
+            onNext={nextStep}
+          />
+        );
+      case StepType.DIAGNOSIS_2:
+        return (
+          <DiagnosisStep 
+            icon="🔥"
+            title="Perfil Metabólico"
+            content="Seu estilo de vida atual sugere um metabolismo que precisa de um 'choque' de cetose controlada. Vamos priorizar a queima de gordura visceral nas primeiras 2 semanas."
+            onNext={nextStep}
+          />
+        );
+      case StepType.DIAGNOSIS_3:
+        return (
+          <DiagnosisStep 
+            icon="🎯"
+            title="Personalização Final"
+            content="Com base nas suas preferências, selecionamos as receitas que exigem menos tempo de preparo e maior saciedade. Estamos prontos para calcular seus números finais."
+            onNext={nextStep}
+          />
+        );
+      case StepType.CAROUSEL_BEFORE_AFTER:
+        return <CarouselStep onNext={nextStep} />;
+      case StepType.TESTIMONIALS:
+        return <TestimonialsStep onNext={nextStep} />;
+      case StepType.METRIC_QUESTION:
+        return (
+          <MetricQuestionStep 
+            question={currentStepData.question!}
+            answers={state.answers}
+            onAnswer={handleAnswer}
+            onPrev={prevStep}
+            onNext={nextStep}
+          />
+        );
+      case StepType.EMAIL_CAPTURE:
+        return (
+          <EmailCaptureStep 
+            email={state.email}
+            setEmail={(e) => setState(prev => ({ ...prev, email: String(e) }))}
+            onNext={nextStep}
+          />
+        );
+      case StepType.LOADING:
+        return <LoadingStep onComplete={nextStep} />;
+      case StepType.FINAL_OFFER:
+        return <FinalOfferStep answers={state.answers} />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="font-sans antialiased text-gray-900 overflow-x-hidden">
+      {state.currentStepIndex > 0 && state.currentStepIndex < stepsSequence.length - 1 && (
+        <ProgressBar progress={progress} />
+      )}
+      {renderStep()}
+    </div>
+  );
+};
+
+export default App;
