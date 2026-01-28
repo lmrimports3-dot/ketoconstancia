@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
   <head>
@@ -9,6 +8,25 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Script UTMify (Novas UTMs) -->
+    <script
+      src="https://cdn.utmify.com.br/scripts/utms/latest.js"
+      data-utmify-prevent-xcod-sck
+      data-utmify-prevent-subids
+      async
+      defer
+    ></script>
+
+    <!-- Pixel UTMFY Global -->
+    <script>
+      window.pixelId = "69702fa1c5b721d69dce91ef";
+      var a = document.createElement("script");
+      a.setAttribute("async", "");
+      a.setAttribute("defer", "");
+      a.setAttribute("src", "https://cdn.utmify.com.br/scripts/pixel/pixel.js");
+      document.head.appendChild(a);
+    </script>
     
     <style>
       body {
@@ -86,7 +104,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <!-- Script de entrada com caminho relativo obrigatório para GitHub Pages -->
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>

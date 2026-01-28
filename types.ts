@@ -9,8 +9,7 @@ export enum StepType {
   TESTIMONIALS,
   EMAIL_CAPTURE,
   METRIC_QUESTION,
-  LOADING,
-  FINAL_OFFER
+  LOADING
 }
 
 export interface Option {
